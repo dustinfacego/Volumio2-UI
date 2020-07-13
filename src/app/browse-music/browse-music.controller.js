@@ -1,7 +1,7 @@
 class BrowseMusicController {
   constructor($scope, browseService, playQueueService, playlistService, socketService,
     modalService, $timeout, matchmediaService, $compile, $document, $rootScope, $log, playerService,
-    uiSettingsService, $state, themeManager, $stateParams, mockService, $http, authService) {
+    uiSettingsService, $state, themeManager, $stateParams, mockService, $http, authService, $filter) {
     'ngInject';
     this.$log = $log;
     this.browseService = browseService;
@@ -27,6 +27,8 @@ class BrowseMusicController {
     this.mockAlbumPage = mockService._mock.browseMusic.getAlbumPageContent;
     this.$http = $http;
     this.authService = authService;
+    this.filteredTranslate = $filter('translate');
+
     this.content = {};
     this.loadingCredit = {};
     this.hideInfoHeader = false;
@@ -50,6 +52,7 @@ class BrowseMusicController {
     $scope.$on('browseService:rip', () => {
       this.backHome();
     });
+
 
     this.initController();
   }
@@ -153,6 +156,14 @@ class BrowseMusicController {
     }
   }
 
+  /*
+    ====== New navigation stack back functionality ======
+  */
+  goBack() {
+    this.resetBrowsePage();
+    this.browseService.goBack();
+  }
+
   backHome() {
     this.resetBrowsePage();
     this.searchField = '';
@@ -248,6 +259,10 @@ class BrowseMusicController {
     if (!item) {
       return false;
     }
+    // We avoid that by mistake one clicks on play all NAS or USB, freezing volumio
+    if (item.type === 'folder' && item.uri && item.uri.startsWith('music-library/') && item.uri.split('/').length < 4 ) {
+      return false;
+    }
     let ret = item.type === 'folder' || item.type === 'song' ||
         item.type === 'mywebradio' || item.type === 'webradio' ||
         item.type === 'playlist' || item.type === 'cuesong' ||
@@ -272,7 +287,7 @@ class BrowseMusicController {
   }
 
   showMoreStory(details) {
-    if (!this.checkAuthAndSubscription().authEnabled || this.checkAuthAndSubscription().plan !== 'superstar') {
+    if (this.checkAuthAndSubscription().authEnabled && this.checkAuthAndSubscription().plan !== 'superstar') {
       this.showPremiumFeatureModal();
       return;
     }
@@ -376,7 +391,7 @@ class BrowseMusicController {
 
   getArtistInfo(albumInfo) {
 
-    if (!this.checkAuthAndSubscription().authEnabled || this.checkAuthAndSubscription().plan !== 'superstar') {
+    if (this.checkAuthAndSubscription().authEnabled && this.checkAuthAndSubscription().plan !== 'superstar') {
       this.showPremiumFeatureModal();
       return;
     }
@@ -409,7 +424,7 @@ class BrowseMusicController {
           } else {
             this.showCreditsDetails({
               title: this.browseService.info.artist,
-              story: `<h3>Artist story not found for ${ this.browseService.info.artist }.</h3>`
+              story: `<h3>${ this.filteredTranslate('BROWSER.ARTIST_STORY_NOT_FOUND_FOR') } ${ this.browseService.info.artist }.</h3>`
             });
           }
         });
@@ -422,10 +437,10 @@ class BrowseMusicController {
 
   showPremiumFeatureModal() {
     this.showCreditsDetails({
-      title: 'Music and Artists Credit Discovery',
+      title: this.filteredTranslate('MYVOLUMIO.MODAL_DISCOVERY_PREMIUM_TITLE'),
       story: `
-        <h2 class="text-center">This feature is available for Volumio Superstart subscribers.</h2>
-        <p class="text-center">Enhanced metadata for your local music and much more.</p>
+        <h2 class="text-center">${ this.filteredTranslate('MYVOLUMIO.MODAL_DISCOVERY_PREMIUM_HEADING') }</h2>
+        <p class="text-center">${ this.filteredTranslate('MYVOLUMIO.MODAL_DISCOVERY_PREMIUM_TEXT') }</p>
       `,
       upgradeCta: true
     });
@@ -542,7 +557,7 @@ class BrowseMusicController {
   }
 
   showAlbumCredits() {
-    if (!this.checkAuthAndSubscription().authEnabled || this.checkAuthAndSubscription().plan !== 'superstar') {
+    if (this.checkAuthAndSubscription().authEnabled && this.checkAuthAndSubscription().plan !== 'superstar') {
       this.showPremiumFeatureModal();
       return;
     }

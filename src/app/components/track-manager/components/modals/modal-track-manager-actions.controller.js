@@ -2,7 +2,7 @@ import { reject } from "lodash";
 
 class ModalTrackManagerActionsController {
   constructor($uibModalInstance, dataObj, playerService, $state, socketService, $log, $timeout, browseService,
-      $translate, uiSettingsService, $http, modalService, authService) {
+      $translate, uiSettingsService, $http, modalService, authService, $filter) {
     'ngInject';
 
     this.$log = $log;
@@ -18,12 +18,15 @@ class ModalTrackManagerActionsController {
     this.$http = $http;
     this.modalService = modalService;
     this.authService = authService;
+    this.filteredTranslate = $filter('translate');
 
     this.creditsLoading = false;
     this.creditsError = false;
     this.storyError = false;
     this.artistStoryLoading = false;
     this.artistError = false;
+    this.albumStoryError = false;
+    this.albumStoryLoading = false;
     this.currentItemMetas = {};
     this.trackStoryLoading = false;
     this.creditRequestOptions = {"timeout":7000};
@@ -94,7 +97,7 @@ class ModalTrackManagerActionsController {
   }
 
   getArtistStory() {
-    if (!this.checkAuthAndSubscription().authEnabled || this.checkAuthAndSubscription().plan !== 'superstar') {
+    if (this.checkAuthAndSubscription().authEnabled && this.checkAuthAndSubscription().plan !== 'superstar') {
       this.showPremiumFeatureModal();
       return;
     }
@@ -120,9 +123,9 @@ class ModalTrackManagerActionsController {
         this.artistStoryLoading = false;
       });
   }
-  
+
   getTrackStory() {
-    if (!this.checkAuthAndSubscription().authEnabled || this.checkAuthAndSubscription().plan !== 'superstar') {
+    if (this.checkAuthAndSubscription().authEnabled && this.checkAuthAndSubscription().plan !== 'superstar') {
       this.showPremiumFeatureModal();
       return;
     }
@@ -150,10 +153,10 @@ class ModalTrackManagerActionsController {
         this.trackStoryLoading = false;
       });
   }
-  
-  
+
+
   getAlbumCredits() {
-    if (!this.checkAuthAndSubscription().authEnabled || this.checkAuthAndSubscription().plan !== 'superstar') {
+    if (this.checkAuthAndSubscription().authEnabled && this.checkAuthAndSubscription().plan !== 'superstar') {
       this.showPremiumFeatureModal();
       return;
     }
@@ -181,6 +184,35 @@ class ModalTrackManagerActionsController {
       });
   }
 
+  getAlbumStory() {
+    if (this.checkAuthAndSubscription().authEnabled && this.checkAuthAndSubscription().plan !== 'superstar') {
+      this.showPremiumFeatureModal();
+      return;
+    }
+    this.albumStoryLoading = true;
+    let metaObject = {
+      'endpoint': 'metavolumio',
+      'data': {
+        'mode':'storyAlbum',
+        'artist': this.playerService.state.artist,
+        'album': this.playerService.state.album
+      }
+    };
+
+    this.requestMetavolumioApi(metaObject)
+      .then(result => {
+        this.albumStoryError = false;
+        this.currentItemMetas.albumStory = result.value;
+        this.showAlbumStory();
+      })
+      .catch(error => {
+        this.albumStoryError = true;
+      })
+      .finally(() => {
+        this.albumStoryLoading = false;
+      });
+  }
+
 
   showAlbumCredits() {
     let creditsObject = {
@@ -189,7 +221,15 @@ class ModalTrackManagerActionsController {
     };
     this.showCreditsDetails(creditsObject);
   }
-  
+
+  showAlbumStory() {
+    let creditsObject = {
+      title: this.playerService.state.album,
+      story: this.currentItemMetas.albumStory
+    };
+    this.showCreditsDetails(creditsObject);
+  }
+
   showTrackStory() {
     let creditsObject = {
       title: this.playerService.state.album,
@@ -197,7 +237,7 @@ class ModalTrackManagerActionsController {
     };
     this.showCreditsDetails(creditsObject);
   }
-  
+
   showArtistStory() {
     let creditsObject = {
       title: this.playerService.state.artist,
@@ -225,10 +265,10 @@ class ModalTrackManagerActionsController {
 
   showPremiumFeatureModal() {
     this.showCreditsDetails({
-      title: 'Music and Artists Credit Discovery',
+      title: this.filteredTranslate('MYVOLUMIO.MODAL_DISCOVERY_PREMIUM_TITLE'),
       story: `
-        <h2 class="text-center">This feature is available for Volumio Superstart subscribers.</h2>
-        <p class="text-center">Enhanced metadata for your local music and much more.</p>
+        <h2 class="text-center">${ this.filteredTranslate('MYVOLUMIO.MODAL_DISCOVERY_PREMIUM_HEADING') }</h2>
+        <p class="text-center">${ this.filteredTranslate('MYVOLUMIO.MODAL_DISCOVERY_PREMIUM_TEXT') }</p>
       `,
       upgradeCta: true
     });
